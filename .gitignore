@@ -1,16 +1,7 @@
-# Compiled class file
+# Build output
+target/
+build/
 *.class
-
-# Log file
-*.log
-
-# BlueJ files
-*.ctxt
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
 *.jar
 *.war
 *.nar
@@ -19,9 +10,46 @@
 *.tar.gz
 *.rar
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+# Logs
+*.log
 hs_err_pid*
 replay_pid*
 
+# Maven
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache
+*.ctxt
+.mtj.tmp/
+
+# OS
+.DS_Store
+Thumbs.db
+
 # Claude Code
 .claude/
+
+# Secrets / local config
+.env
+.env.*
+!.env.example
+src/main/resources/application-dev.yml
+src/main/resources/application-local.yml
+src/main/resources/application-prod.yml
+src/main/resources/application-secrets.yml
+**/application-dev.yml
+**/application-local.yml
+**/application-prod.yml
+**/application-secrets.yml
