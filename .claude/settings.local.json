@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p persistence/converter persistence/entity persistence/repository)",
+      "Bash(mv persistance/converter/*.java persistence/converter/)",
+      "Bash(mv persistance/entity/*.java persistence/entity/)",
+      "Bash(mv persistance/repository/*.java persistence/repository/)",
+      "Bash(rmdir persistance/converter persistance/entity persistance/repository persistance)"
+    ]
+  }
+}
