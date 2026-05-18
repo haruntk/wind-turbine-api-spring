@@ -1,4 +1,4 @@
-﻿package com.windturbine.wind_turbine_api.infrastructure.persistence.entity;
+package com.windturbine.wind_turbine_api.infrastructure.persistence.entity;
 
 import com.windturbine.wind_turbine_api.domain.enums.Severity;
 import com.windturbine.wind_turbine_api.infrastructure.persistence.converter.SeverityConverter;

@@ -1,4 +1,4 @@
-﻿package com.windturbine.wind_turbine_api.infrastructure.persistence.converter;
+package com.windturbine.wind_turbine_api.infrastructure.persistence.converter;
 
 import com.windturbine.wind_turbine_api.domain.enums.SensorType;
 import jakarta.persistence.AttributeConverter;

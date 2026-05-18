@@ -1,4 +1,4 @@
-﻿package com.windturbine.wind_turbine_api.infrastructure.persistence.repository;
+package com.windturbine.wind_turbine_api.infrastructure.persistence.repository;
 
 import com.windturbine.wind_turbine_api.infrastructure.persistence.entity.FeatureVectorJpaEntity;
 import org.springframework.data.domain.Pageable;
