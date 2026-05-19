@@ -1,5 +1,6 @@
 package com.windturbine.wind_turbine_api.infrastructure.security;
 
+import com.windturbine.wind_turbine_api.infrastructure.security.adapter.JwtTokenAdapter;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;

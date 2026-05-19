@@ -1,7 +1,8 @@
-package com.windturbine.wind_turbine_api.infrastructure.security;
+package com.windturbine.wind_turbine_api.infrastructure.security.adapter;
 
 import com.windturbine.wind_turbine_api.application.port.TokenServicePort;
 import com.windturbine.wind_turbine_api.domain.model.User;
+import com.windturbine.wind_turbine_api.infrastructure.security.JwtProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.JwtException;

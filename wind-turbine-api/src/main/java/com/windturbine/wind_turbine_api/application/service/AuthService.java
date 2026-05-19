@@ -3,6 +3,7 @@ package com.windturbine.wind_turbine_api.application.service;
 import com.windturbine.wind_turbine_api.application.dto.auth.AuthResponseDto;
 import com.windturbine.wind_turbine_api.application.dto.auth.LoginRequestDto;
 import com.windturbine.wind_turbine_api.application.dto.auth.RegisterRequestDto;
+import com.windturbine.wind_turbine_api.application.port.PasswordHashingPort;
 import com.windturbine.wind_turbine_api.application.port.TokenServicePort;
 import com.windturbine.wind_turbine_api.domain.exception.ConflictException;
 import com.windturbine.wind_turbine_api.domain.exception.InvalidCredentialsException;
@@ -12,7 +13,6 @@ import com.windturbine.wind_turbine_api.domain.model.User;
 import com.windturbine.wind_turbine_api.domain.port.out.RoleRepositoryPort;
 import com.windturbine.wind_turbine_api.domain.port.out.UserRepositoryPort;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +27,7 @@ public class AuthService {
 
     private final UserRepositoryPort userRepositoryPort;
     private final RoleRepositoryPort roleRepositoryPort;
-    private final PasswordEncoder passwordEncoder;
+    private final PasswordHashingPort passwordHashingPort;
     private final TokenServicePort tokenServicePort;
 
     @Transactional
@@ -36,7 +36,7 @@ public class AuthService {
                 .filter(User::isActive)
                 .orElseThrow(InvalidCredentialsException::new);
 
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+        if (!passwordHashingPort.matches(request.password(), user.getPasswordHash())) {
             throw new InvalidCredentialsException();
         }
 
@@ -64,7 +64,7 @@ public class AuthService {
         User newUser = new User(
                 request.username(),
                 request.email(),
-                passwordEncoder.encode(request.password()),
+                passwordHashingPort.hash(request.password()),
                 defaultRole.getRoleId()
         );
 
