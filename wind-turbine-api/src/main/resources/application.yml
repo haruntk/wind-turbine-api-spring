@@ -1,83 +1,170 @@
 # =============================================================================
-# Common / production-safe defaults.
-# Override locally via application-dev.yml (SPRING_PROFILES_ACTIVE=dev) or
-# environment variables in production.
+# COMMON configuration. Profile files (application-dev.yml, application-prod.yml)
+# override on top of this. The "prod" profile is intended for the container.
+#
+# Anything secret / environment-specific lives in env vars — never here.
 # =============================================================================
 
 spring:
   application:
     name: wind-turbine-api
 
+  # Active profile is provided via SPRING_PROFILES_ACTIVE env var.
+  # The Docker image defaults it to "prod"; local dev sets it to "dev".
+
   # ---------------------------------------------------------------------------
-  # PostgreSQL / TimescaleDB. URL + credentials come from env vars in prod.
+  # PostgreSQL / TimescaleDB
   # ---------------------------------------------------------------------------
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/wind_turbine_db}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:}
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 10
-      minimum-idle: 2
-      connection-timeout: 10000
+      pool-name: WindTurbineHikariPool
+      maximum-pool-size: ${DB_POOL_MAX:20}
+      minimum-idle: ${DB_POOL_MIN:5}
+      connection-timeout: 10000        # 10s to acquire from pool before failing fast
+      validation-timeout: 5000
+      idle-timeout: 600000              # 10m
+      max-lifetime: 1800000             # 30m — below typical PgBouncer/router limit
+      keepalive-time: 300000            # 5m TCP keepalive ping
+      leak-detection-threshold: 60000   # 60s — alerts if a connection is held too long
+      auto-commit: false
 
   jpa:
     hibernate:
-      # 'validate' fails fast if entity ↔ DB schema drifts.
-      # NEVER use create / create-drop / update against a real database.
-      ddl-auto: validate
+      ddl-auto: validate                # NEVER create/update against a real DB
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         jdbc:
           time_zone: UTC
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
         format_sql: false
-    open-in-view: false      # disables OSIV anti-pattern
+        connection:
+          provider_disables_autocommit: true
+    open-in-view: false                 # OSIV stays OFF
 
   flyway:
     enabled: true
     baseline-on-migrate: true
     baseline-version: "1"
+    validate-on-migrate: true
+
+  # Graceful shutdown — stop accepting new requests, drain for up to 30s, then exit.
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+  # Cap incoming JSON body size.
+  servlet:
+    multipart:
+      max-file-size: 1MB
+      max-request-size: 2MB
+
+  jackson:
+    time-zone: UTC
+    default-property-inclusion: non_null
 
 # =============================================================================
-# JWT — bound to com.windturbine...security.JwtProperties
-# Secret MUST be at least 32 chars (HMAC-SHA256). Override in production.
+# JWT — bound to JwtProperties (validated). No defaults; missing values fail boot.
 # =============================================================================
 jwt:
-  secret-key: ${JWT_SECRET_KEY:}
+  secret-key: ${JWT_SECRET_KEY}
   issuer: ${JWT_ISSUER:WindTurbineAPI}
   audience: ${JWT_AUDIENCE:WindTurbineDashboard}
   expiration-minutes: ${JWT_EXPIRATION_MINUTES:60}
 
 # =============================================================================
-# CORS — front-end origin allow-list.
+# CORS — front-end origin allow-list (comma-separated env var).
 # =============================================================================
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+
+# =============================================================================
+# Application toggles
+# =============================================================================
+app:
+  seeder:
+    enabled: ${APP_SEEDER_ENABLED:true}
 
 # =============================================================================
 # Server
 # =============================================================================
 server:
   port: ${SERVER_PORT:8080}
+  shutdown: graceful                    # required for spring.lifecycle.timeout
+  compression:
+    enabled: true
+    mime-types: application/json,application/problem+json,text/plain,text/html
+    min-response-size: 1024
+  http2:
+    enabled: true
   error:
-    include-message: always
-    include-binding-errors: always
+    include-message: never              # do not leak in prod; dev profile re-enables
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+  tomcat:
+    threads:
+      max: ${TOMCAT_THREADS_MAX:200}
+      min-spare: ${TOMCAT_THREADS_MIN:10}
+    accept-count: 100
+    connection-timeout: 20000
+    max-connections: 10000
+    max-http-form-post-size: 2MB
+  forward-headers-strategy: framework   # honor X-Forwarded-* behind a proxy
 
 # =============================================================================
-# Actuator — expose only health / info publicly (see SecurityConfig).
+# Actuator — bound to its own port + path so Prometheus/k8s probes are reachable
+# internally without exposing them on the public listener.
 # =============================================================================
 management:
+  server:
+    port: ${MANAGEMENT_PORT:8081}
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus,metrics
+      base-path: /actuator
   endpoint:
     health:
       show-details: when-authorized
+      probes:
+        enabled: true                   # /actuator/health/liveness and /readiness
+      group:
+        readiness:
+          include: db,readinessState
+        liveness:
+          include: livenessState
+  health:
+    db:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  info:
+    env:
+      enabled: true
+    git:
+      mode: SIMPLE
+    java:
+      enabled: true
+    os:
+      enabled: true
 
 # =============================================================================
-# Logging
+# Logging — JSON in prod (logback-spring.xml selects the encoder by profile)
 # =============================================================================
 logging:
   level:
@@ -85,3 +172,5 @@ logging:
     com.windturbine: INFO
     org.hibernate.SQL: WARN
     org.springframework.security: WARN
+  pattern:
+    correlation: "%X{correlationId:-}"

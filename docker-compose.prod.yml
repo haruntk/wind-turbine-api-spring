@@ -1,0 +1,54 @@
+# ============================================================================
+# Production stack on the Google Cloud VM.
+#
+# Assumes:
+#   - TimescaleDB already runs in another container on this VM at 10.0.3.2:5432.
+#   - You created a Docker network so the API can reach that IP.
+#       docker network create --driver=bridge --subnet=10.0.3.0/24 windnet
+#     and the DB container is attached to the same network with --ip 10.0.3.2.
+#   - Real values live in /opt/wind-turbine-api/.env on the VM (chmod 600).
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml --env-file /opt/wind-turbine-api/.env up -d
+# ============================================================================
+
+services:
+
+  api:
+    image: wind-turbine-api:${IMAGE_TAG:-latest}
+    container_name: windguard-api
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      # Everything else comes from env_file. Override only knobs that should
+      # NEVER be in the env file.
+      SPRING_PROFILES_ACTIVE: prod
+      MANAGEMENT_PORT: "8081"
+    ports:
+      - "127.0.0.1:8080:8080"     # public-facing reverse proxy goes in front
+      - "127.0.0.1:8081:8081"     # actuator — bound to loopback ONLY
+    networks: [windnet]
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: "1.5"
+        reservations:
+          memory: 512m
+          cpus: "0.5"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8081/actuator/health/liveness | grep -q UP"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+networks:
+  # Use the externally-created network that already contains TimescaleDB at 10.0.3.2.
+  windnet:
+    external: true

@@ -1,0 +1,69 @@
+# ============================================================================
+# Local development stack — bundles a TimescaleDB container.
+# Usage:
+#   docker compose up --build
+#
+# The API joins TimescaleDB on the internal `windnet` network and reaches it
+# via the service name `timescaledb` — *not* via host IPs.
+# ============================================================================
+
+services:
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: windguard-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: windguard
+      POSTGRES_USER: windguard_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-dev-only-password}
+    ports:
+      - "5432:5432"          # expose only for local tools; remove in prod
+    volumes:
+      - timescale-data:/var/lib/postgresql/data
+    networks: [windnet]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U windguard_user -d windguard"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  api:
+    build:
+      context: ./wind-turbine-api
+      dockerfile: Dockerfile
+    image: wind-turbine-api:dev
+    container_name: windguard-api
+    restart: unless-stopped
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_URL: jdbc:postgresql://timescaledb:5432/windguard
+      DB_USERNAME: windguard_user
+      DB_PASSWORD: ${DB_PASSWORD:-dev-only-password}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-only-secret-please-change-this-key-32}
+      JWT_ISSUER: WindTurbineAPI
+      JWT_AUDIENCE: WindTurbineDashboard
+      JWT_EXPIRATION_MINUTES: "240"
+      CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173"
+      SERVER_PORT: "8080"
+      MANAGEMENT_PORT: "8081"
+    ports:
+      - "8080:8080"
+      - "8081:8081"           # actuator — keep host-bound only in dev
+    networks: [windnet]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8081/actuator/health/liveness | grep -q UP"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 40s
+
+networks:
+  windnet:
+    driver: bridge
+
+volumes:
+  timescale-data:

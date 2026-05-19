@@ -1,0 +1,21 @@
+# keep the Docker context small + private
+target/
+build/
+.idea/
+.vscode/
+.git/
+.gitignore
+.gitattributes
+.mvn/wrapper/maven-wrapper.jar
+HELP.md
+*.iml
+*.log
+hs_err_pid*
+
+# secrets / local-only configs — never copy into a layer
+.env
+.env.*
+!.env.example
+src/main/resources/application-dev.yml
+src/main/resources/application-local.yml
+src/main/resources/application-secrets.yml

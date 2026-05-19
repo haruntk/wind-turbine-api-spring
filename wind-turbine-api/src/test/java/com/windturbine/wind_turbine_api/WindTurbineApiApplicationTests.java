@@ -1,13 +1,11 @@
 package com.windturbine.wind_turbine_api;
 
+import com.windturbine.wind_turbine_api.support.TimescaleContainerTest;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class WindTurbineApiApplicationTests {
+class WindTurbineApiApplicationTests extends TimescaleContainerTest {
 
-	@Test
-	void contextLoads() {
-	}
-
+    @Test
+    void contextLoads() {
+    }
 }
